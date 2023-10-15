@@ -29,3 +29,29 @@ def format_private_key(version: bytes, private_key: bytes,  compressed: bool = T
     wif = base58.b58encode_check(data)
     
     return wif.decode('utf-8')  
+
+
+def derive_address(public_key: bytes, version: bytes) -> str:
+    """
+    Derive a Bitcoin address from the public key
+    Note: Public key can be compressed or not
+    
+    :return: Bitcoin address string
+    """
+
+    hash = hashlib.sha256(public_key).digest()
+
+    ripemd160 = hashlib.new('ripemd160')
+    ripemd160.update(hash)
+    pub_key_hash = ripemd160.digest()
+
+    data = version + pub_key_hash
+
+    # double hash data
+    data_hash = hashlib.sha256(hashlib.sha256(data).digest()).digest()
+    checksum = data_hash[:4]
+
+    data += checksum
+    address = base58.b58encode(data)
+
+    return address.decode('utf-8')
