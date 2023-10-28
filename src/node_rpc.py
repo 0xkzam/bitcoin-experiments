@@ -40,22 +40,22 @@ class TestnetNodeProxy:
     @classmethod
     def get_balance(cls, address: str) -> (int, []):
         """
-        - Get the total balance in BTC given the address
+        - Get the total balance in Sats given the address
         
         param address: Address as a string
-        returns: (amount in BTC, list of UTXOs)
+        returns: (amount in sats, list of UTXOs)
         """
         utxos = cls.get_utxos(address)
         balance = 0
         if utxos:
-            balance = sum([Decimal(utxo['amount']) for utxo in utxos])
+            balance = to_satoshis(sum([Decimal(utxo['amount']) for utxo in utxos]))
         else:
             raise Exception("Error: No UTXOs available.")
 
         return (balance, utxos)
 
     @classmethod
-    def broadcast_tx(cls, tx:Transaction) -> str:
+    def broadcast(cls, tx:Transaction) -> str:
         return cls.proxy.sendrawtransaction(tx.serialize())
         
     @classmethod
@@ -119,4 +119,4 @@ class TestnetNodeProxy:
             script_sig = Script([sig, pk])
             txinputs[i].script_sig = script_sig   
 
-        return cls.broadcast_tx(tx)
+        return cls.broadcast(tx)
