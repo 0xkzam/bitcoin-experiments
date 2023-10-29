@@ -23,7 +23,5 @@ def main():
     print("Multisig Address: ", addr.to_string())
 
 
-
 if __name__ == "__main__":
-
     main()

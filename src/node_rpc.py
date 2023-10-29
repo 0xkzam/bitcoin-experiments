@@ -12,8 +12,6 @@ class TestnetNodeProxy:
     - This class is used for rpc calls to interact with the testnet node.
     - For the sake of simplicity, I have hardcoded some input parameters 
     - and also used minimal error handling.
-    -
-    - 
     """
 
     # Connection to the testnet node running on another host
@@ -23,8 +21,8 @@ class TestnetNodeProxy:
     @classmethod
     def get_utxos(cls, address: str) -> Optional[List[Dict]]:
         """
-        param address: Address as a string
-        returns: A list of UTXOs of given the address
+        :param address: Address as a string
+        :returns: A list of UTXOs of given the address
         """
 
         # Scan for UTXOs
@@ -42,8 +40,8 @@ class TestnetNodeProxy:
         """
         - Get the total balance in Sats given the address
         
-        param address: Address as a string
-        returns: (amount in sats, list of UTXOs)
+        :param address: Address as a string
+        :returns: (amount in sats, list of UTXOs)
         """
         utxos = cls.get_utxos(address)
         balance = 0
@@ -64,7 +62,7 @@ class TestnetNodeProxy:
         Checks the whether the provided transaction is valid and whether it'll be 
         accepted by the bitcoin node by testing the mempool acceptance.
 
-        returns: True if the transaction is valid and ready to broadcast,throws 
+        :returns: True if the transaction is valid and ready to broadcast,throws 
         Exception otherwise.
         """
         json = cls.proxy.testmempoolaccept([tx.serialize()])
@@ -76,29 +74,44 @@ class TestnetNodeProxy:
             
         
     @classmethod
-    def get_estimated_fee_per_kb(cls) -> int:
-        """
-        - Get curretn estimated fee per byte for tx confimation with 5 blocks
-        - If exception thrown, returns 5 sats as a fallback value
+    def get_fee_per_kb(cls, fallback_fee_kb = 2000) -> int:
+        """      
+        - This is a safe stratergy to calculate fee per kB
+        
+        - Get the minimum relay fee per kB for current network conditions 
+        - Get current estimated fee per kB for tx confimation with 5 blocks
+        - fee per kB = (min relay fee + min estimated fee) per kB
+        - If exception thrown, returns a fallback value
 
-        returns: fee per byte in sats
+        :param fallback_fee_kb: Optional
+        :returns: fee per kB in sats, upon failure returns 2000 sats
         """
         try:
-            block_confirmations = 5
-            return cls.proxy.call('estimatesmartfee', block_confirmations)['feerate']
-        except Exception as e:
-            # fallback value in sats
-            return 5
+            network_info = cls.proxy.getnetworkinfo()
+            if 'relayfee' in network_info:
+                min_fee_per_kb = network_info['relayfee']
+
+                json = cls.proxy.estimatesmartfee(5)
+                if 'feerate' in json:
+                    fee = to_satoshis(min_fee_per_kb) + to_satoshis(json['feerate'])
+                    print("\nEstimated fee per kB (sats): ", fee)
+                    return fee
+        except Exception:   
+            pass         
+
+        print("\nEstimated fee per kB (sats): Using fallback value of ", fallback_fee_kb)
+        return fallback_fee_kb
 
 
     @classmethod
     def send_funds_to(cls, destination_addr: P2shAddress, amount_sats: int) -> str:
         """
         - Sends funds to a P2SH address from a P2PKH address that already has funds.
-        - This corresponds to the initial funding step.
+        - This corresponds to the initial funding step. The source address and keys 
+        - are hardcoded for simplicity.
 
         - The following address is used to fund the provided address.
-        - Currently, it contains 0.05 tBTC
+        - Initially funded with 0.05 tBTC
         - Address:  mxhTXpLKqJM86MigH5gmrcpvCfigVJep4q
         - SK:  cSiDHNFUmmCZMmhij8chhUe9fFVHPByacvsuwmxFjBeCFuvsxnkR
         """
@@ -111,8 +124,8 @@ class TestnetNodeProxy:
 
         # estimated tx size = (num of inputs * 148) + (num of outputs * 34) + base tx size 
         estimated_tx_size = (len(utxos) * 148) + (2 * 34) + 10
-        fee_kb = TestnetNodeProxy.get_estimated_fee_per_kb()
-        fee = estimated_tx_size * fee_kb
+        fee_kb = TestnetNodeProxy.get_fee_per_kb()
+        fee = int(estimated_tx_size * fee_kb * 0.001)
 
         change_amount = available_amount - amount_sats - fee
         if change_amount < 0:
