@@ -1,5 +1,5 @@
 from bitcoinutils.setup import setup
-from bitcoinutils.keys import P2shAddress, PrivateKey, PublicKey, P2pkhAddress
+from bitcoinutils.keys import P2shAddress, PrivateKey
 from bitcoinutils.script import Script
 from bitcoinutils.transactions import Transaction, TxInput, TxOutput
 from bitcoinutils.utils import to_satoshis
@@ -9,19 +9,19 @@ from node_rpc import TestnetNodeProxy
 def main():
     setup("testnet")
 
-    # Creating private keys and extracting public keys===================================
+    # Creating private keys and extracting public keys
     sk1 = PrivateKey("cQCP4tNRF96xdv2iidyZwjQHwD47b3evCBdvYVTcBx8PaNjQejT4")
     sk2 = PrivateKey("cVmSqqXC28aZXL9ENVdM4JNsrfpMeifMyEouhNFHH3UiEpDbCr3d")
     sk3 = PrivateKey("cQT5aG2S6QH9YbRo5jPAFWeMqZvwXCW2KuRrvRnS64HwjCymTCJE")
     pk1, pk2, pk3 = sk1.get_public_key(), sk2.get_public_key(), sk3.get_public_key()
 
 
-    # Creating the redeem script=========================================================
+    # Creating the redeem script
     # Note: full public keys are required to perform OP_CHECKMULTISIG
     redeem_script = Script([2, pk1.to_hex(), pk2.to_hex(), pk3.to_hex(), 3, "OP_CHECKMULTISIG"])
 
 
-    # Create a P2SH address from the redeem script=======================================
+    # Create a P2SH address from the redeem script
     multisig_addr = P2shAddress.from_script(redeem_script)
     print("Multisig address: ", multisig_addr.to_string())
 
@@ -32,7 +32,6 @@ def main():
     # try:
     #     tx0id = TestnetNodeProxy.send_funds_to(multisig_addr, to_satoshis(0.0001))
     #     print("txid: ", tx0id)
-    #     # Stop the execution since the tx confirmation takes time
     #     return 
     # except Exception as e:
     #     print("Failed to send funds to \"" + str(multisig_addr.to_string()) + "\"\n", e)
@@ -40,7 +39,7 @@ def main():
     #====================================================================================
 
 
-    # Checking the p2sh address for unspent outputs======================================    
+    # Checking the p2sh address for unspent outputs    
     available_amount, utxos = 0, []
     try:
         available_amount, utxos = TestnetNodeProxy.get_balance(multisig_addr.to_string())        
@@ -51,13 +50,13 @@ def main():
         return 
 
 
-    # Creating a P2PKH address to send funds from the P2PH address=======================
+    # Creating a P2PKH address to send funds from the P2PH address
     p2pkh_sk = PrivateKey()
     destination_addr = p2pkh_sk.get_public_key().get_address()
     print("\nDestination address:", destination_addr.to_string())
 
 
-    # Calculate the fee==================================================================
+    # Calculate the fee
     # estimated tx size = (num of inputs * 148) + (num of outputs * 34) + base tx size 
     # Since this estimation takes all unspent UTXOs into account, it's not optimal :(
     estimated_tx_size = (len(utxos) * 148) + (2 * 34) + 10
@@ -74,7 +73,7 @@ def main():
         return
 
 
-    # Creating the transaction inputs and ouputs=========================================
+    # Creating the transaction inputs and ouputs
     txinputs, txoutputs = [], []
     for utxo in utxos:
         txinputs.append(TxInput(utxo['txid'], utxo['vout']))
@@ -83,10 +82,10 @@ def main():
     txoutputs.append(TxOutput(change_amount, multisig_addr.to_script_pub_key()))
 
     tx = Transaction(txinputs, txoutputs)
-    print("\nRaw unsigned transaction:\n" + tx.serialize())
+    print("\nRaw unsigned transaction:\n", tx.serialize())
 
 
-    # Signing & Setting the scriptSig for each tx input==================================
+    # Signing & Setting the scriptSig for each tx input
     for i, txin in enumerate(txinputs):
         # Signing the tx with 2 of the 3 private keys for each input
         sig1 = sk1.sign_input(tx, i, redeem_script)
@@ -97,15 +96,23 @@ def main():
     print("\nRaw signed transaction:\n", tx.serialize())
       
 
-    # Broadcast the transaction==========================================================
+    # Check the validity of the transaction
+    valid = False
     try:
-        txid = TestnetNodeProxy.broadcast(tx)   
-        print("\nTx ID:\n", txid)          
+        valid = TestnetNodeProxy.test_broadcast(tx)   
+        print("\nTransaction validy check passed.")
     except Exception as e:
-        print("Broadcasting transaction failed:", e)
+        print("\nTransaction validy check failed:", e)
+
+
+    # Broadcast the transaction
+    if valid:
+        try:
+            txid = TestnetNodeProxy.broadcast(tx)   
+            print("\nTx ID:\n", txid)          
+        except Exception as e:
+            print("\nBroadcasting transaction failed:", e)
         
-
-
 
 if __name__ == "__main__":
     main()

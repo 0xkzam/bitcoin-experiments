@@ -57,6 +57,23 @@ class TestnetNodeProxy:
     @classmethod
     def broadcast(cls, tx:Transaction) -> str:
         return cls.proxy.sendrawtransaction(tx.serialize())
+    
+    @classmethod
+    def test_broadcast(cls, tx:Transaction) -> bool:
+        """
+        Checks the whether the provided transaction is valid and whether it'll be 
+        accepted by the bitcoin node by testing the mempool acceptance.
+
+        returns: True if the transaction is valid and ready to broadcast,throws 
+        Exception otherwise.
+        """
+        json = cls.proxy.testmempoolaccept([tx.serialize()])
+
+        if json[0]['allowed']:
+            return True
+        else:
+            raise Exception("Invalid transaction:", json[0]['reject-reason'])
+            
         
     @classmethod
     def get_estimated_fee_per_kb(cls) -> int:
@@ -77,8 +94,8 @@ class TestnetNodeProxy:
     @classmethod
     def send_funds_to(cls, destination_addr: P2shAddress, amount_sats: int) -> str:
         """
-        - Send funds to a P2SH address from a P2PKH address that has funds
-        - This corresponds to the initial funding step
+        - Sends funds to a P2SH address from a P2PKH address that already has funds.
+        - This corresponds to the initial funding step.
 
         - The following address is used to fund the provided address.
         - Currently, it contains 0.05 tBTC

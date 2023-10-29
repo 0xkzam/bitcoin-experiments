@@ -1,5 +1,5 @@
 from bitcoinutils.setup import setup
-from bitcoinutils.keys import Address, P2shAddress, PrivateKey, PublicKey
+from bitcoinutils.keys import P2shAddress, PrivateKey
 from bitcoinutils.script import Script
 
 def main():
