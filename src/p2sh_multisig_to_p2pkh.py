@@ -104,7 +104,7 @@ def main():
     except Exception as e:
         print("\nTransaction validy check failed:", e)
 
-    valid = False
+
     # Broadcast the transaction=====
     if valid:
         try:
