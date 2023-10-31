@@ -5,6 +5,7 @@ from bitcoinutils.script import Script
 from bitcoinutils.utils import to_satoshis
 from decimal import Decimal
 from typing import Optional, List, Dict
+from user_input import UserInput
 
 
 class TestnetNodeProxy:
@@ -77,6 +78,7 @@ class TestnetNodeProxy:
     def get_fee_per_kb(cls, fallback_fee_kb = 2000) -> int:
         """      
         - This is a safe stratergy to calculate fee per kB
+        - NOT optimal
         
         - Get the minimum relay fee per kB for current network conditions 
         - Get current estimated fee per kB for tx confimation with 5 blocks
@@ -104,7 +106,7 @@ class TestnetNodeProxy:
 
 
     @classmethod
-    def send_funds_to(cls, destination_addr: P2shAddress, amount_sats: int) -> str:
+    def send_funds_to(cls, destination_addr: P2shAddress, source_sk:PrivateKey, amount_sats: int) -> str:
         """
         - Sends funds to a P2SH address from a P2PKH address that already has funds.
         - This corresponds to the initial funding step. The source address and keys 
@@ -113,14 +115,11 @@ class TestnetNodeProxy:
         - The following address is used to fund the provided address.
         - Initially funded with 0.05 tBTC
         - Address:  mxhTXpLKqJM86MigH5gmrcpvCfigVJep4q
-        - SK:  cSiDHNFUmmCZMmhij8chhUe9fFVHPByacvsuwmxFjBeCFuvsxnkR
         """
- 
-        source_addr_str = "mxhTXpLKqJM86MigH5gmrcpvCfigVJep4q"
-        source_addr = P2pkhAddress(source_addr_str)
-        source_sk = PrivateKey("cSiDHNFUmmCZMmhij8chhUe9fFVHPByacvsuwmxFjBeCFuvsxnkR")
+        
+        source_addr = source_sk.get_public_key().get_address()
 
-        available_amount, utxos = TestnetNodeProxy.get_balance(source_addr_str)   
+        available_amount, utxos = TestnetNodeProxy.get_balance(source_addr.to_string())   
 
         # estimated tx size = (num of inputs * 148) + (num of outputs * 34) + base tx size 
         estimated_tx_size = (len(utxos) * 148) + (2 * 34) + 10

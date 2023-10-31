@@ -1,70 +1,64 @@
 from bitcoinutils.setup import setup
-from bitcoinutils.keys import P2shAddress, PrivateKey
+from bitcoinutils.keys import P2shAddress, PrivateKey, PublicKey, P2pkhAddress
 from bitcoinutils.script import Script
 from bitcoinutils.transactions import Transaction, TxInput, TxOutput
 from bitcoinutils.utils import to_satoshis
 from node_rpc import TestnetNodeProxy
-   
-
-def main():
-    setup("testnet")
-
-    # Creating private keys and extracting public keys
-    sk1 = PrivateKey("cQCP4tNRF96xdv2iidyZwjQHwD47b3evCBdvYVTcBx8PaNjQejT4")
-    sk2 = PrivateKey("cVmSqqXC28aZXL9ENVdM4JNsrfpMeifMyEouhNFHH3UiEpDbCr3d")
-    sk3 = PrivateKey("cQT5aG2S6QH9YbRo5jPAFWeMqZvwXCW2KuRrvRnS64HwjCymTCJE")
-    pk1, pk2, pk3 = sk1.get_public_key(), sk2.get_public_key(), sk3.get_public_key()
+from typing import List
+from user_input import UserInput
 
 
-    # Creating the redeem script=====
-    # Note: full public keys are required to perform OP_CHECKMULTISIG
-    redeem_script = Script([2, pk1.to_hex(), pk2.to_hex(), pk3.to_hex(), 3, "OP_CHECKMULTISIG"])
+def main(sk1: PrivateKey, sk2: PrivateKey, pk3: PublicKey, p2sh_addr: P2shAddress, p2pkh_addr: P2pkhAddress):
+    """
+    - Sends funds from P2SH Multisig address to a P2PKH address
+    
+    :param sk1: Private key no.1
+    :param sk2: Private key no. 2
+    :param pk3: Public key derived from private key no. 3
+    :param p2sh_addr: Source address - P2SH Multisig
+    :param p2pkh_addr: Destination addres - P2PKH 
+    """
 
+    setup("testnet")    
 
-    # Create a P2SH address from the redeem script=====
-    multisig_addr = P2shAddress.from_script(redeem_script)
-    print("Multisig address: ", multisig_addr.to_string())
-
-
-    #====================================================================================
-    # # Initial funding of the multisig P2SH address
-    # # Uncomment and run this if you want to fund the P2SH address again.    
+    # ====================================================================================
+    # # Initial funding step of the P2SH multisig address
+    # # Uncomment and run this if the P2SH address needs to be funded again.
     # try:
-    #     tx0id = TestnetNodeProxy.send_funds_to(multisig_addr, to_satoshis(0.0001))
+    #     p2pkh_sk = PrivateKey(UserInput.P2PKH_SK)
+    #     tx0id = TestnetNodeProxy.send_funds_to(p2sh_addr, p2pkh_sk, to_satoshis(0.0001))
     #     print("txid: ", tx0id)
     # except Exception as e:
-    #     print("Failed to send funds to \"" + str(multisig_addr.to_string()) + "\"\n", e)
+    #     print("Failed to send funds to \"" + str(p2sh_addr.to_string()) + "\"\n", e)
     # return
-    #====================================================================================
+    # ====================================================================================
 
+    # Source: P2SH Multisig address=====
+    print("Source address:", p2sh_addr.to_string())
 
-    # Checking the p2sh address for unspent outputs=====    
+    # Checking the p2sh address for unspent outputs=====
     available_amount, utxos = 0, []
     try:
-        available_amount, utxos = TestnetNodeProxy.get_balance(multisig_addr.to_string())        
-        print("Number of UTXOs: ", len(utxos))
-        print("Total amount available (sats): ", available_amount)       
+        available_amount, utxos = TestnetNodeProxy.get_balance(p2sh_addr.to_string())
+        print("- Number of UTXOs: ", len(utxos))
+        print("- Total amount available (sats): ", available_amount)
     except Exception as e:
         print("Try again! ", e)
-        return 
+        return
 
-
-    # Creating a P2PKH address to send funds from the P2PH address=====
-    p2pkh_sk = PrivateKey()
-    destination_addr = p2pkh_sk.get_public_key().get_address()
-    print("\nDestination address:", destination_addr.to_string())
-
+    # Destination: P2PKH address=====
+    print("\nDestination address:", p2pkh_addr.to_string())
 
     # Calculate the fee=====
-    # estimated tx size = (num of inputs * 148) + (num of outputs * 34) + base tx size 
+    # estimated tx size = (num of inputs * 148) + (num of outputs * 34) + base tx size
     # Since this estimation takes all unspent UTXOs into account, it's not optimal :(
     estimated_tx_size = (len(utxos) * 148) + (2 * 34) + 10
     fee_kb = TestnetNodeProxy.get_fee_per_kb()
     fee = int(estimated_tx_size * fee_kb * 0.001)
     print("Total calculated fee (sats): ", fee)
 
-    # Even though the assignment says to send all funds, I'm only sending half of the 
-    # funds available in the multisig address because each time I test this, the 
+    # Even though the assignment says to send all funds, I'm only sending half of the
+    # funds available in the multisig address because each time I test this, the
     # multsig address needs to be re-funded.
     sending_amount = int(available_amount/2)
     change_amount = available_amount - sending_amount - fee
@@ -72,47 +66,80 @@ def main():
         print("Error: Insufficient funds.")
         return
 
-
     # Creating the transaction inputs and ouputs=====
     txinputs, txoutputs = [], []
     for utxo in utxos:
         txinputs.append(TxInput(utxo['txid'], utxo['vout']))
 
-    txoutputs.append(TxOutput(sending_amount, destination_addr.to_script_pub_key()))
-    txoutputs.append(TxOutput(change_amount, multisig_addr.to_script_pub_key()))
+    txoutputs.append(
+        TxOutput(sending_amount, p2pkh_addr.to_script_pub_key()))
+    txoutputs.append(
+        TxOutput(change_amount, p2sh_addr.to_script_pub_key()))
 
     tx = Transaction(txinputs, txoutputs)
     print("\nRaw unsigned transaction:\n", tx.serialize())
 
 
-    # Signing & Setting the scriptSig for each tx input=====
+    # Creating the redeem script=====
+    redeem_script = Script(
+        [
+            "OP_2", 
+            sk1.get_public_key().to_hex(),
+            sk2.get_public_key().to_hex(),
+            pk3.to_hex(),
+            "OP_3",
+            "OP_CHECKMULTISIG"
+        ])
+
+
+    # Signing & Setting the scriptSig for each tx input=====   
     for i, txin in enumerate(txinputs):
         # Signing the tx with 2 of the 3 private keys for each input
         sig1 = sk1.sign_input(tx, i, redeem_script)
         sig2 = sk2.sign_input(tx, i, redeem_script)
         # Setting the scriptSig for each input
-        txin.script_sig = Script(["OP_0", sig1, sig2, redeem_script.to_hex()])        
+        txin.script_sig = Script(["OP_0", sig1, sig2, redeem_script.to_hex()])
 
     print("\nRaw signed transaction:\n", tx.serialize())
-      
+
 
     # Check the validity of the transaction=====
-    valid = False
+    tx_valid = False
     try:
-        valid = TestnetNodeProxy.test_broadcast(tx)   
+        tx_valid = TestnetNodeProxy.test_broadcast(tx)
         print("\nTransaction validy check passed.")
     except Exception as e:
         print("\nTransaction validy check failed:", e)
 
-
+  
     # Broadcast the transaction=====
-    if valid:
+    if tx_valid:
         try:
-            txid = TestnetNodeProxy.broadcast(tx)   
-            print("\nTx ID:\n", txid)          
+            txid = TestnetNodeProxy.broadcast(tx)
+            print("\nTx ID:\n", txid)
         except Exception as e:
             print("\nBroadcasting transaction failed:", e)
-        
+
 
 if __name__ == "__main__":
-    main()
+
+    # The user inputs are assumed to be taken as commandline arguments. 
+    # In this case I'm loading hardcoded data from UserInput class for simplicity
+
+    # User Input 1: Private key no. 1
+    sk1 = PrivateKey(UserInput.SK1)
+
+    # User Input 2: Private key no. 2
+    sk2 = PrivateKey(UserInput.SK2)
+
+    # User Input 3: Public key no. 3
+    pk3 = PublicKey.from_hex(UserInput.PK3)
+    
+    # User Input 4: source P2SH address
+    p2sh_addr = P2shAddress.from_address(UserInput.P2SH_ADDR)
+
+    # User Input 5: destination P2PKH address
+    p2pkh_addr = P2pkhAddress.from_address(UserInput.P2PKH_ADDR)
+
+
+    main(sk1, sk2, pk3, p2sh_addr, p2pkh_addr)
