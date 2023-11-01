@@ -1,6 +1,6 @@
 from bitcoinutils.proxy import NodeProxy
 from bitcoinutils.transactions import Transaction, TxInput, TxOutput
-from bitcoinutils.keys import P2shAddress, PrivateKey, P2pkhAddress
+from bitcoinutils.keys import P2shAddress, PrivateKey
 from bitcoinutils.script import Script
 from bitcoinutils.utils import to_satoshis
 from decimal import Decimal
@@ -22,6 +22,16 @@ class TestnetNodeProxy:
     host = UserInput.HOST
     port = UserInput.PORT
     proxy = NodeProxy(rpc_user, rpc_pw, host, port).get_proxy()
+
+
+    @classmethod
+    def check_connection(cls) -> bool: 
+        """
+        - To check the connection with the bitcoin node.
+
+        :return True if connected, raise exception otherwise
+        """
+        return cls.proxy.getblockcount() > 0
 
     @classmethod
     def get_utxos(cls, address: str) -> Optional[List[Dict]]:

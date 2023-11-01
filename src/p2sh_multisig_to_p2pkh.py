@@ -4,7 +4,6 @@ from bitcoinutils.script import Script
 from bitcoinutils.transactions import Transaction, TxInput, TxOutput
 from bitcoinutils.utils import to_satoshis
 from node_rpc import TestnetNodeProxy
-from typing import List
 from user_input import UserInput
 
 
@@ -25,6 +24,13 @@ def execute(
     :param p2pkh_addr: Destination addres - P2PKH 
     """
     setup("testnet")    
+
+    # Checking the connection to the bitcoin node=====
+    try:
+        TestnetNodeProxy.check_connection()
+    except Exception as e:
+        print("Connection to the bitcoin node failed:", e)
+        return
 
     # ====================================================================================
     # # Initial funding step of the P2SH multisig address
@@ -117,7 +123,7 @@ def execute(
     except Exception as e:
         print("\nTransaction validy check failed:", e)
 
-  
+
     # Broadcast the transaction=====
     if tx_valid:
         try:
