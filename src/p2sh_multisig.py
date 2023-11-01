@@ -4,7 +4,7 @@ from bitcoinutils.script import Script
 from user_input import UserInput
 
 
-def main(pk1_hex: str, pk2_hex: str, pk3_hex: str):
+def create_multisig(pk1_hex: str, pk2_hex: str, pk3_hex: str):
 
     setup("testnet")
     
@@ -27,4 +27,4 @@ if __name__ == "__main__":
     pk2_hex = UserInput.PK2 # User input 2: pub key no. 2
     pk3_hex = UserInput.PK3 # User input 3: pub key no. 3
 
-    main(pk1_hex, pk2_hex, pk3_hex)
+    create_multisig(pk1_hex, pk2_hex, pk3_hex)

@@ -8,7 +8,13 @@ from typing import List
 from user_input import UserInput
 
 
-def main(sk1: PrivateKey, sk2: PrivateKey, pk3: PublicKey, p2sh_addr: P2shAddress, p2pkh_addr: P2pkhAddress):
+def execute(
+        sk1: PrivateKey, 
+        sk2: PrivateKey, 
+        pk3: PublicKey, 
+        p2sh_addr: P2shAddress, 
+        p2pkh_addr: P2pkhAddress
+    ):
     """
     - Sends funds from P2SH Multisig address to a P2PKH address
     
@@ -18,7 +24,6 @@ def main(sk1: PrivateKey, sk2: PrivateKey, pk3: PublicKey, p2sh_addr: P2shAddres
     :param p2sh_addr: Source address - P2SH Multisig
     :param p2pkh_addr: Destination addres - P2PKH 
     """
-
     setup("testnet")    
 
     # ====================================================================================
@@ -48,6 +53,7 @@ def main(sk1: PrivateKey, sk2: PrivateKey, pk3: PublicKey, p2sh_addr: P2shAddres
 
     # Destination: P2PKH address=====
     print("\nDestination address:", p2pkh_addr.to_string())
+
 
     # Calculate the fee=====
     # estimated tx size = (num of inputs * 148) + (num of outputs * 34) + base tx size
@@ -142,4 +148,4 @@ if __name__ == "__main__":
     p2pkh_addr = P2pkhAddress.from_address(UserInput.P2PKH_ADDR)
 
 
-    main(sk1, sk2, pk3, p2sh_addr, p2pkh_addr)
+    execute(sk1, sk2, pk3, p2sh_addr, p2pkh_addr)
