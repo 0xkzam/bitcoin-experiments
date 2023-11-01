@@ -17,7 +17,11 @@ class TestnetNodeProxy:
 
     # Connection to the testnet node running on another host
     # Make sure to set rpcuser, rpcpassword, rpcbind, rpcallowip in the test section of bitcoin.conf
-    proxy = NodeProxy("krpcadmin", "ps456b6", host="192.168.1.5", port=18332).get_proxy()
+    rpc_user = UserInput.RPC_USER
+    rpc_pw = UserInput.RPC_PW
+    host = UserInput.HOST
+    port = UserInput.PORT
+    proxy = NodeProxy(rpc_user, rpc_pw, host, port).get_proxy()
 
     @classmethod
     def get_utxos(cls, address: str) -> Optional[List[Dict]]:
@@ -81,7 +85,7 @@ class TestnetNodeProxy:
         - NOT optimal
         
         - Get the minimum relay fee per kB for current network conditions 
-        - Get current estimated fee per kB for tx confimation with 5 blocks
+        - Get current estimated fee per kB for tx confimation with 10 blocks
         - fee per kB = (min relay fee + min estimated fee) per kB
         - If exception thrown, returns a fallback value
 
@@ -91,11 +95,10 @@ class TestnetNodeProxy:
         try:
             network_info = cls.proxy.getnetworkinfo()
             if 'relayfee' in network_info:
-                min_fee_per_kb = network_info['relayfee']
-
-                json = cls.proxy.estimatesmartfee(5)
+                relay_fee = network_info['relayfee']
+                json = cls.proxy.estimatesmartfee(10)
                 if 'feerate' in json:
-                    fee = to_satoshis(min_fee_per_kb) + to_satoshis(json['feerate'])
+                    fee = to_satoshis(relay_fee) + to_satoshis(json['feerate'])
                     print("\nEstimated fee per kB (sats): ", fee)
                     return fee
         except Exception:   
@@ -108,6 +111,8 @@ class TestnetNodeProxy:
     @classmethod
     def send_funds_to(cls, destination_addr: P2shAddress, source_sk:PrivateKey, amount_sats: int) -> str:
         """
+        - This is just a test method I initially wrote to fund the multisig address
+
         - Sends funds to a P2SH address from a P2PKH address that already has funds.
         - This corresponds to the initial funding step. The source address and keys 
         - are hardcoded for simplicity.
@@ -118,7 +123,6 @@ class TestnetNodeProxy:
         """
         
         source_addr = source_sk.get_public_key().get_address()
-
         available_amount, utxos = TestnetNodeProxy.get_balance(source_addr.to_string())   
 
         # estimated tx size = (num of inputs * 148) + (num of outputs * 34) + base tx size 
