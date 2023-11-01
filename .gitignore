@@ -1,3 +1,6 @@
 .DS_Store
 src/test_*
-src/__pycache__/KeyOperations.cpython-311.pyc
+src/__pycache__/*
+.gitignore
+src/.vscode/settings.json
+*.zip
