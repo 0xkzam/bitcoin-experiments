@@ -91,7 +91,7 @@
     ```
 - Select `txid` and `vout` from a UTXO that has enough funds
 - Run `createrawtransaction` using the selected `txid` and `vout`
-- Always specify the amount of fees for the tx otherwise, the rest of the BTC, except the sending amount, will be used as the tx fee.
+- Always calculate the amount of fees for the tx, otherwise the rest of the BTC minus the sending amount will be used as the tx fee. The `change_address` can be used to return the balance after substracting the sending amount + tx fee.
     ```
     bitcoin-cli -testnet createrawtransaction '[
         {
@@ -100,7 +100,8 @@
         }
     ]' '{
         "<recipient_address>": <btc_amount>, 
-        "data":"<data_in_hex>"
+        "data":"<data_in_hex>",
+        "change_address": <change-amount>
     }'
     ```
 

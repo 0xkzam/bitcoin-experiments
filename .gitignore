@@ -1,6 +1,6 @@
 .DS_Store
 src/test_*
-src/__pycache__/*
 .gitignore
-src/.vscode/settings.json
+src/.vscode/*
 *.zip
+src/__pycache__/*
