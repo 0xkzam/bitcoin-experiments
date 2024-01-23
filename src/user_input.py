@@ -1,6 +1,7 @@
 class UserInput:
+    # Just to avoid the hassle of loading a properties file :)
 
-    # There're tBTC available in the following addresses. Not going to remove the private keys, so be responsible :)
+    # There might be tBTC available in the following addresses. Not going to remove the private keys, so be responsible :)
     ##########################################################################
     # Private keys used to create the P2SH Multsig address
     SK1 = "cQCP4tNRF96xdv2iidyZwjQHwD47b3evCBdvYVTcBx8PaNjQejT4"
