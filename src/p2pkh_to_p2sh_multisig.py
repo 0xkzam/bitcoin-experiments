@@ -8,7 +8,7 @@ from user_input import UserInput
 
 
 
-def send_funds_to(cls, destination_addr: P2shAddress, source_sk:PrivateKey, amount_sats: int) -> str:
+def send_funds_to(destination_addr: P2shAddress, source_sk:PrivateKey, amount_sats: int) -> str:
     """
     - This is just a test method I initially wrote to fund the multisig address
 
@@ -51,4 +51,4 @@ def send_funds_to(cls, destination_addr: P2shAddress, source_sk:PrivateKey, amou
         script_sig = Script([sig, pk])
         txinputs[i].script_sig = script_sig   
 
-    return cls.broadcast(tx)
+    return TestnetNodeProxy.broadcast(tx)
